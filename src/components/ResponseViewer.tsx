@@ -1,39 +1,42 @@
 import React, { useState } from 'react';
-import { Table, List, AlignLeft, X } from 'lucide-react';
+import { Table, List, AlignLeft, X, Download } from 'lucide-react';
 import { ApiResponse } from '../types';
+import * as XLSX from 'xlsx';
 
 interface ResponseViewerProps {
   response: ApiResponse | null;
+  isDark: boolean;
 }
 
 interface NestedTableProps {
   data: any;
   onClose: () => void;
   title: string;
+  isDark: boolean;
 }
 
-function NestedTable({ data, onClose, title }: NestedTableProps) {
+function NestedTable({ data, onClose, title, isDark }: NestedTableProps) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
-        <div className="p-4 border-b flex justify-between items-center">
-          <h3 className="font-semibold text-lg">{title}</h3>
+      <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden`}>
+        <div className={`p-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex justify-between items-center`}>
+          <h3 className={`font-semibold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>{title}</h3>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-full"
+            className={`p-1 rounded-full ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
           >
-            <X size={20} />
+            <X size={20} className={isDark ? 'text-gray-400' : 'text-gray-500'} />
           </button>
         </div>
         <div className="p-4 overflow-auto max-h-[calc(80vh-4rem)]">
-          <JsonTable data={data} />
+          <JsonTable data={data} isDark={isDark} />
         </div>
       </div>
     </div>
   );
 }
 
-function JsonTable({ data }: { data: any }) {
+function JsonTable({ data, isDark }: { data: any; isDark: boolean }) {
   const [nestedView, setNestedView] = useState<{
     data: any;
     title: string;
@@ -47,10 +50,8 @@ function JsonTable({ data }: { data: any }) {
       const newKey = prefix ? `${prefix}.${key}` : key;
       
       if (value && typeof value === 'object' && !Array.isArray(value)) {
-        // Instead of flattening, keep the object reference
         acc[newKey] = value;
       } else if (Array.isArray(value) && value.some(item => typeof item === 'object')) {
-        // Keep array of objects as is
         acc[newKey] = value;
       } else {
         acc[newKey] = value;
@@ -68,9 +69,9 @@ function JsonTable({ data }: { data: any }) {
       return (
         <button
           onClick={() => setNestedView({ data: value, title: `Array: ${key}` })}
-          className="text-blue-600 hover:underline"
+          className={`${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'} hover:underline`}
         >
-          [..]
+          [Array of Objects]
         </button>
       );
     }
@@ -83,7 +84,7 @@ function JsonTable({ data }: { data: any }) {
       return (
         <button
           onClick={() => setNestedView({ data: value, title: `Object: ${key}` })}
-          className="text-blue-600 hover:underline"
+          className={`${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'} hover:underline`}
         >
           {Object.keys(value).length} properties
         </button>
@@ -102,26 +103,32 @@ function JsonTable({ data }: { data: any }) {
   return (
     <>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className={`min-w-full divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
           <thead>
             <tr>
               {columns.map((column) => (
                 <th 
                   key={column}
-                  className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                    isDark 
+                      ? 'bg-gray-700 text-gray-300'
+                      : 'bg-gray-50 text-gray-500'
+                  }`}
                 >
                   {column}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className={`${isDark ? 'bg-gray-800' : 'bg-white'} divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
             {flattenedRows.map((row, i) => (
               <tr key={i}>
                 {columns.map((column) => (
                   <td 
                     key={column}
-                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono"
+                    className={`px-6 py-4 whitespace-nowrap text-sm font-mono ${
+                      isDark ? 'text-gray-300' : 'text-gray-500'
+                    }`}
                   >
                     {renderValue(row[column], column)}
                   </td>
@@ -137,13 +144,14 @@ function JsonTable({ data }: { data: any }) {
           data={nestedView.data}
           onClose={() => setNestedView(null)}
           title={nestedView.title}
+          isDark={isDark}
         />
       )}
     </>
   );
 }
 
-function TreeView({ data }: { data: any }) {
+function TreeView({ data, isDark }: { data: any; isDark: boolean }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const toggleExpand = (path: string) => {
@@ -158,7 +166,7 @@ function TreeView({ data }: { data: any }) {
 
   const renderTree = (obj: any, path = ''): JSX.Element => {
     if (typeof obj !== 'object' || obj === null) {
-      return <span className="text-blue-600">{JSON.stringify(obj)}</span>;
+      return <span className={isDark ? 'text-blue-400' : 'text-blue-600'}>{JSON.stringify(obj)}</span>;
     }
 
     const isArray = Array.isArray(obj);
@@ -167,7 +175,7 @@ function TreeView({ data }: { data: any }) {
       Object.entries(obj);
 
     return (
-      <div className="pl-4 border-l border-gray-200">
+      <div className={`pl-4 border-l ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
         {entries.map(([key, value]) => {
           const currentPath = path ? `${path}.${key}` : key;
           const isExpandable = typeof value === 'object' && value !== null;
@@ -180,15 +188,15 @@ function TreeView({ data }: { data: any }) {
                 onClick={() => isExpandable && toggleExpand(currentPath)}
               >
                 {isExpandable && (
-                  <span className="text-gray-400 select-none">
+                  <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>
                     {isExpanded ? '▼' : '▶'}
                   </span>
                 )}
-                <span className="text-gray-700 font-semibold">
+                <span className={isDark ? 'text-gray-300 font-semibold' : 'text-gray-700 font-semibold'}>
                   {key}:
                 </span>
                 {!isExpandable && (
-                  <span className="text-blue-600 ml-2">
+                  <span className={isDark ? 'text-blue-400 ml-2' : 'text-blue-600 ml-2'}>
                     {JSON.stringify(value)}
                   </span>
                 )}
@@ -206,19 +214,42 @@ function TreeView({ data }: { data: any }) {
   };
 
   return (
-    <div className="font-mono text-sm bg-gray-50 p-4 rounded">
+    <div className={`font-mono text-sm ${isDark ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded`}>
       {renderTree(data)}
     </div>
   );
 }
 
-export function ResponseViewer({ response }: ResponseViewerProps) {
+export function ResponseViewer({ response, isDark }: ResponseViewerProps) {
   const [view, setView] = useState<'tree' | 'table' | 'raw'>('tree');
+
+  const handleExport = () => {
+    if (!response?.data) return;
+
+    if (view === 'table') {
+      // Export as Excel
+      const ws = XLSX.utils.json_to_sheet([response.data].flat());
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Response Data');
+      XLSX.writeFile(wb, 'response-data.xlsx');
+    } else {
+      // Export as JSON
+      const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'response-data.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  };
 
   if (!response) return null;
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className={`px-3 py-1 rounded ${
@@ -232,34 +263,56 @@ export function ResponseViewer({ response }: ResponseViewerProps) {
         <div className="flex gap-2">
           <button
             onClick={() => setView('tree')}
-            className={`p-2 rounded ${view === 'tree' ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
+            className={`p-2 rounded ${
+              isDark
+                ? view === 'tree' ? 'bg-gray-700' : 'hover:bg-gray-700'
+                : view === 'tree' ? 'bg-gray-200' : 'hover:bg-gray-100'
+            }`}
             title="Tree View"
           >
-            <List size={18} />
+            <List size={18} className={isDark ? 'text-gray-300' : 'text-gray-600'} />
           </button>
           <button
             onClick={() => setView('table')}
-            className={`p-2 rounded ${view === 'table' ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
+            className={`p-2 rounded ${
+              isDark
+                ? view === 'table' ? 'bg-gray-700' : 'hover:bg-gray-700'
+                : view === 'table' ? 'bg-gray-200' : 'hover:bg-gray-100'
+            }`}
             title="Table View"
           >
-            <Table size={18} />
+            <Table size={18} className={isDark ? 'text-gray-300' : 'text-gray-600'} />
           </button>
           <button
             onClick={() => setView('raw')}
-            className={`p-2 rounded ${view === 'raw' ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
+            className={`p-2 rounded ${
+              isDark
+                ? view === 'raw' ? 'bg-gray-700' : 'hover:bg-gray-700'
+                : view === 'raw' ? 'bg-gray-200' : 'hover:bg-gray-100'
+            }`}
             title="Raw View"
           >
-            <AlignLeft size={18} />
+            <AlignLeft size={18} className={isDark ? 'text-gray-300' : 'text-gray-600'} />
+          </button>
+          <button
+            onClick={handleExport}
+            className={`p-2 rounded ${
+              isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+            }`}
+            title="Export Data"
+          >
+            <Download size={18} className={isDark ? 'text-gray-300' : 'text-gray-600'} />
           </button>
         </div>
       </div>
 
       <div className="mb-4">
-        <h3 className="font-semibold mb-2">Response Headers</h3>
-        <div className="bg-gray-50 p-4 rounded">
+        <h3 className={`font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>Response Headers</h3>
+        <div className={`${isDark ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded`}>
           {Object.entries(response.headers).map(([key, value]) => (
             <div key={key} className="text-sm">
-              <span className="font-semibold">{key}:</span> {value}
+              <span className={`font-semibold ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>{key}:</span>{' '}
+              <span className={isDark ? 'text-gray-400' : 'text-gray-700'}>{value}</span>
             </div>
           ))}
         </div>
@@ -271,12 +324,14 @@ export function ResponseViewer({ response }: ResponseViewerProps) {
         </div>
       ) : (
         <div className="mt-4">
-          <h3 className="font-semibold mb-2">Response Body</h3>
-          {view === 'tree' && <TreeView data={response.data} />}
-          {view === 'table' && <JsonTable data={response.data} />}
+          <h3 className={`font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>Response Body</h3>
+          {view === 'tree' && <TreeView data={response.data} isDark={isDark} />}
+          {view === 'table' && <JsonTable data={response.data} isDark={isDark} />}
           {view === 'raw' && (
-            <pre className="bg-gray-50 p-4 rounded overflow-x-auto">
-              {JSON.stringify(response.data, null, 2)}
+            <pre className={`${isDark ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded overflow-x-auto`}>
+              <code className={isDark ? 'text-gray-300' : 'text-gray-900'}>
+                {JSON.stringify(response.data, null, 2)}
+              </code>
             </pre>
           )}
         </div>

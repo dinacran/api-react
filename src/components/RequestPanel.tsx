@@ -4,6 +4,7 @@ import { RequestConfig, AuthConfig } from '../types';
 
 interface RequestPanelProps {
   onRequest: (config: RequestConfig) => Promise<void>;
+  isDark: boolean;
 }
 
 interface CustomHeader {
@@ -11,7 +12,7 @@ interface CustomHeader {
   value: string;
 }
 
-export function RequestPanel({ onRequest }: RequestPanelProps) {
+export function RequestPanel({ onRequest, isDark }: RequestPanelProps) {
   const [url, setUrl] = useState('');
   const [method, setMethod] = useState<RequestConfig['method']>('GET');
   const [customHeaders, setCustomHeaders] = useState<CustomHeader[]>([]);
@@ -36,7 +37,6 @@ export function RequestPanel({ onRequest }: RequestPanelProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Combine custom headers with auth and content-type headers
     const headers: Record<string, string> = {
       ...customHeaders.reduce((acc, { key, value }) => {
         if (key && value) acc[key] = value;
@@ -65,13 +65,17 @@ export function RequestPanel({ onRequest }: RequestPanelProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex gap-2">
           <select
             value={method}
             onChange={(e) => setMethod(e.target.value as RequestConfig['method'])}
-            className="bg-gray-100 rounded px-3 py-2"
+            className={`${
+              isDark 
+                ? 'bg-gray-700 text-white border-gray-600' 
+                : 'bg-gray-100 text-gray-900 border-gray-300'
+            } rounded px-3 py-2 border`}
           >
             {['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map(m => (
               <option key={m} value={m}>{m}</option>
@@ -82,18 +86,24 @@ export function RequestPanel({ onRequest }: RequestPanelProps) {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="Enter request URL"
-            className="flex-1 border rounded px-3 py-2"
+            className={`flex-1 rounded px-3 py-2 border ${
+              isDark
+                ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
+            }`}
             required
           />
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Headers</h3>
+            <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Headers</h3>
             <button
               type="button"
               onClick={handleAddHeader}
-              className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              className={`${
+                isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
+              } flex items-center gap-1`}
             >
               <Plus size={16} /> Add Header
             </button>
@@ -106,14 +116,22 @@ export function RequestPanel({ onRequest }: RequestPanelProps) {
                   value={header.key}
                   onChange={(e) => handleHeaderChange(index, 'key', e.target.value)}
                   placeholder="Header name"
-                  className="flex-1 border rounded px-3 py-2"
+                  className={`flex-1 rounded px-3 py-2 border ${
+                    isDark
+                      ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                      : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
+                  }`}
                 />
                 <input
                   type="text"
                   value={header.value}
                   onChange={(e) => handleHeaderChange(index, 'value', e.target.value)}
                   placeholder="Header value"
-                  className="flex-1 border rounded px-3 py-2"
+                  className={`flex-1 rounded px-3 py-2 border ${
+                    isDark
+                      ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                      : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
+                  }`}
                 />
                 <button
                   type="button"
@@ -128,11 +146,15 @@ export function RequestPanel({ onRequest }: RequestPanelProps) {
         </div>
 
         <div className="space-y-2">
-          <h3 className="font-semibold">Authentication</h3>
+          <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Authentication</h3>
           <select
             value={auth.type}
             onChange={(e) => setAuth({ type: e.target.value as AuthConfig['type'] })}
-            className="w-full bg-gray-100 rounded px-3 py-2"
+            className={`w-full rounded px-3 py-2 border ${
+              isDark
+                ? 'bg-gray-700 text-white border-gray-600'
+                : 'bg-gray-100 text-gray-900 border-gray-300'
+            }`}
           >
             {['None', 'Basic', 'Bearer', 'JWT'].map(type => (
               <option key={type} value={type}>{type}</option>
@@ -146,14 +168,22 @@ export function RequestPanel({ onRequest }: RequestPanelProps) {
                 placeholder="Username"
                 value={auth.username || ''}
                 onChange={(e) => setAuth({ ...auth, username: e.target.value })}
-                className="border rounded px-3 py-2"
+                className={`rounded px-3 py-2 border ${
+                  isDark
+                    ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                    : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
+                }`}
               />
               <input
                 type="password"
                 placeholder="Password"
                 value={auth.password || ''}
                 onChange={(e) => setAuth({ ...auth, password: e.target.value })}
-                className="border rounded px-3 py-2"
+                className={`rounded px-3 py-2 border ${
+                  isDark
+                    ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                    : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
+                }`}
               />
             </div>
           )}
@@ -164,19 +194,27 @@ export function RequestPanel({ onRequest }: RequestPanelProps) {
               placeholder="Token"
               value={auth.token || ''}
               onChange={(e) => setAuth({ ...auth, token: e.target.value })}
-              className="w-full border rounded px-3 py-2"
+              className={`w-full rounded px-3 py-2 border ${
+                isDark
+                  ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                  : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
+              }`}
             />
           )}
         </div>
 
         {method !== 'GET' && (
           <div className="space-y-2">
-            <h3 className="font-semibold">Request Body</h3>
+            <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Request Body</h3>
             <div className="mb-2">
               <select
                 value={contentType}
                 onChange={(e) => setContentType(e.target.value)}
-                className="w-full bg-gray-100 rounded px-3 py-2"
+                className={`w-full rounded px-3 py-2 border ${
+                  isDark
+                    ? 'bg-gray-700 text-white border-gray-600'
+                    : 'bg-gray-100 text-gray-900 border-gray-300'
+                }`}
               >
                 <option value="application/json">application/json</option>
                 <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
@@ -188,14 +226,22 @@ export function RequestPanel({ onRequest }: RequestPanelProps) {
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder={contentType === 'application/json' ? '{\n  "key": "value"\n}' : 'Enter request body'}
-              className="w-full h-48 border rounded px-3 py-2 font-mono"
+              className={`w-full h-48 rounded px-3 py-2 border font-mono ${
+                isDark
+                  ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                  : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
+              }`}
             />
           </div>
         )}
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white rounded py-2 px-4 flex items-center justify-center gap-2 hover:bg-blue-700"
+          className={`w-full rounded py-2 px-4 flex items-center justify-center gap-2 ${
+            isDark
+              ? 'bg-blue-600 hover:bg-blue-700 text-white'
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+          }`}
         >
           <Send size={18} /> Send Request
         </button>

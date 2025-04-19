@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Send, Plus, Trash2 } from 'lucide-react';
+import { Send, Plus, Trash2, History } from 'lucide-react';
 import { RequestConfig, AuthConfig } from '../types';
 
 interface RequestPanelProps {
   onRequest: (config: RequestConfig) => Promise<void>;
   isDark: boolean;
+  urlHistory: string[];
 }
 
 interface CustomHeader {
@@ -12,13 +13,14 @@ interface CustomHeader {
   value: string;
 }
 
-export function RequestPanel({ onRequest, isDark }: RequestPanelProps) {
+export function RequestPanel({ onRequest, isDark, urlHistory }: RequestPanelProps) {
   const [url, setUrl] = useState('');
   const [method, setMethod] = useState<RequestConfig['method']>('GET');
   const [customHeaders, setCustomHeaders] = useState<CustomHeader[]>([]);
   const [contentType, setContentType] = useState('application/json');
   const [body, setBody] = useState('');
   const [auth, setAuth] = useState<AuthConfig>({ type: 'None' });
+  const [showHistory, setShowHistory] = useState(false);
 
   const handleAddHeader = () => {
     setCustomHeaders([...customHeaders, { key: '', value: '' }]);
@@ -67,32 +69,142 @@ export function RequestPanel({ onRequest, isDark }: RequestPanelProps) {
   return (
     <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="flex gap-2">
-          <select
-            value={method}
-            onChange={(e) => setMethod(e.target.value as RequestConfig['method'])}
-            className={`${
-              isDark 
-                ? 'bg-gray-700 text-white border-gray-600' 
-                : 'bg-gray-100 text-gray-900 border-gray-300'
-            } rounded px-3 py-2 border`}
-          >
-            {['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map(m => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="Enter request URL"
-            className={`flex-1 rounded px-3 py-2 border ${
-              isDark
-                ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
-                : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
-            }`}
-            required
-          />
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-2">
+            <select
+              value={method}
+              onChange={(e) => setMethod(e.target.value as RequestConfig['method'])}
+              className={`${
+                isDark 
+                  ? 'bg-gray-700 text-white border-gray-600' 
+                  : 'bg-gray-100 text-gray-900 border-gray-300'
+              } rounded px-3 py-2 border w-28`}
+            >
+              {['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+            <div className="relative flex-1">
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="Enter request URL"
+                className={`w-full rounded px-3 py-2 border ${
+                  isDark
+                    ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                    : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
+                }`}
+                required
+              />
+              {urlHistory.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowHistory(!showHistory)}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded ${
+                    isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
+                  }`}
+                >
+                  <History size={18} className={isDark ? 'text-gray-400' : 'text-gray-500'} />
+                </button>
+              )}
+              {showHistory && (
+                <div className={`absolute z-10 w-full mt-1 rounded-md shadow-lg ${
+                  isDark ? 'bg-gray-700' : 'bg-white'
+                } border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  <div className="py-1 max-h-60 overflow-auto">
+                    {urlHistory.map((historyUrl, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => {
+                          setUrl(historyUrl);
+                          setShowHistory(false);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm ${
+                          isDark
+                            ? 'text-gray-200 hover:bg-gray-600'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        {historyUrl}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <select
+              value={auth.type}
+              onChange={(e) => setAuth({ type: e.target.value as AuthConfig['type'] })}
+              className={`w-36 rounded px-3 py-2 border ${
+                isDark
+                  ? 'bg-gray-700 text-white border-gray-600'
+                  : 'bg-gray-100 text-gray-900 border-gray-300'
+              }`}
+            >
+              {['None', 'Basic', 'Bearer', 'JWT'].map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className={`rounded px-6 py-2 flex items-center justify-center gap-2 ${
+                isDark
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+            >
+              <Send size={18} /> Send
+            </button>
+          </div>
+
+          {auth.type === 'Basic' && (
+            <div className="flex gap-2">
+              <div className="w-28"></div>
+              <div className="flex-1 grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="Username"
+                  value={auth.username || ''}
+                  onChange={(e) => setAuth({ ...auth, username: e.target.value })}
+                  className={`rounded px-3 py-2 border ${
+                    isDark
+                      ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                      : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
+                  }`}
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={auth.password || ''}
+                  onChange={(e) => setAuth({ ...auth, password: e.target.value })}
+                  className={`rounded px-3 py-2 border ${
+                    isDark
+                      ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                      : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
+                  }`}
+                />
+              </div>
+            </div>
+          )}
+
+          {(auth.type === 'Bearer' || auth.type === 'JWT') && (
+            <div className="flex gap-2">
+              <div className="w-28"></div>
+              <input
+                type="text"
+                placeholder="Token"
+                value={auth.token || ''}
+                onChange={(e) => setAuth({ ...auth, token: e.target.value })}
+                className={`flex-1 rounded px-3 py-2 border ${
+                  isDark
+                    ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                    : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
+                }`}
+              />
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -145,64 +257,6 @@ export function RequestPanel({ onRequest, isDark }: RequestPanelProps) {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Authentication</h3>
-          <select
-            value={auth.type}
-            onChange={(e) => setAuth({ type: e.target.value as AuthConfig['type'] })}
-            className={`w-full rounded px-3 py-2 border ${
-              isDark
-                ? 'bg-gray-700 text-white border-gray-600'
-                : 'bg-gray-100 text-gray-900 border-gray-300'
-            }`}
-          >
-            {['None', 'Basic', 'Bearer', 'JWT'].map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-
-          {auth.type === 'Basic' && (
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                placeholder="Username"
-                value={auth.username || ''}
-                onChange={(e) => setAuth({ ...auth, username: e.target.value })}
-                className={`rounded px-3 py-2 border ${
-                  isDark
-                    ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
-                    : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
-                }`}
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={auth.password || ''}
-                onChange={(e) => setAuth({ ...auth, password: e.target.value })}
-                className={`rounded px-3 py-2 border ${
-                  isDark
-                    ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
-                    : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
-                }`}
-              />
-            </div>
-          )}
-
-          {(auth.type === 'Bearer' || auth.type === 'JWT') && (
-            <input
-              type="text"
-              placeholder="Token"
-              value={auth.token || ''}
-              onChange={(e) => setAuth({ ...auth, token: e.target.value })}
-              className={`w-full rounded px-3 py-2 border ${
-                isDark
-                  ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
-                  : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
-              }`}
-            />
-          )}
-        </div>
-
         {method !== 'GET' && (
           <div className="space-y-2">
             <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Request Body</h3>
@@ -234,17 +288,6 @@ export function RequestPanel({ onRequest, isDark }: RequestPanelProps) {
             />
           </div>
         )}
-
-        <button
-          type="submit"
-          className={`w-full rounded py-2 px-4 flex items-center justify-center gap-2 ${
-            isDark
-              ? 'bg-blue-600 hover:bg-blue-700 text-white'
-              : 'bg-blue-600 hover:bg-blue-700 text-white'
-          }`}
-        >
-          <Send size={18} /> Send Request
-        </button>
       </form>
     </div>
   );

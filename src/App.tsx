@@ -7,7 +7,8 @@ import { Terminal, Sun, Moon } from 'lucide-react';
 function App() {
   const [response, setResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(true);
+  const [urlHistory, setUrlHistory] = useState<string[]>([]);
 
   React.useEffect(() => {
     if (isDark) {
@@ -44,6 +45,12 @@ function App() {
         headers: responseHeaders,
         data,
       });
+
+      // Add URL to history if it's not already there
+      setUrlHistory(prev => {
+        const newHistory = [config.url, ...prev.filter(url => url !== config.url)];
+        return newHistory.slice(0, 10); // Keep only the last 10 URLs
+      });
     } catch (error) {
       setResponse({
         status: 0,
@@ -59,7 +66,7 @@ function App() {
   return (
     <div className={`min-h-screen ${isDark ? 'dark bg-gray-900' : 'bg-gray-100'}`}>
       <header className={`${isDark ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1920px] mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Terminal className={`h-6 w-6 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
@@ -83,8 +90,8 @@ function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 space-y-6">
-        <RequestPanel onRequest={handleRequest} isDark={isDark} />
+      <main className="max-w-[1920px] mx-auto px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+        <RequestPanel onRequest={handleRequest} isDark={isDark} urlHistory={urlHistory} />
         {loading ? (
           <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 flex items-center justify-center`}>
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

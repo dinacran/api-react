@@ -71,7 +71,7 @@ function App() {
             <div className="flex items-center gap-2">
               <Terminal className={`h-6 w-6 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
               <h1 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                API Testing & Visualization
+                API Ape
               </h1>
             </div>
             <button

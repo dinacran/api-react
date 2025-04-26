@@ -17,8 +17,14 @@ interface NestedTableProps {
 
 function NestedTable({ data, onClose, title, isDark }: NestedTableProps) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl max-w-6xl w-full max-h-[80vh] overflow-hidden`}>
+    <div
+      onClick={onClose}
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()} // Prevent click event from propagating to the background
+        className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl max-w-6xl w-full max-h-[80vh] overflow-hidden`}
+      >
         <div className={`p-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex justify-between items-center`}>
           <h3 className={`font-semibold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>{title}</h3>
           <button
@@ -28,7 +34,9 @@ function NestedTable({ data, onClose, title, isDark }: NestedTableProps) {
             <X size={20} className={isDark ? 'text-gray-400' : 'text-gray-500'} />
           </button>
         </div>
-        <div className="p-4 overflow-auto max-h-[calc(80vh-4rem)]">
+        <div
+          className="p-4 overflow-auto max-h-[calc(80vh-4rem)] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:h-1"
+        >
           <JsonTable data={data} isDark={isDark} />
         </div>
       </div>

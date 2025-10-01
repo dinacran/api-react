@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Table, List, AlignLeft, X, Download, Code } from 'lucide-react';
+import React, { useState } from 'react';
+import { Table, List, AlignLeft, X, Download } from 'lucide-react';
 import { ApiResponse } from '../types';
 import * as XLSX from 'xlsx';
 
@@ -17,14 +17,8 @@ interface NestedTableProps {
 
 function NestedTable({ data, onClose, title, isDark }: NestedTableProps) {
   return (
-    <div
-      onClick={onClose}
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()} // Prevent click event from propagating to the background
-        className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl max-w-6xl w-full max-h-[80vh] overflow-hidden`}
-      >
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl max-w-6xl w-full max-h-[80vh] overflow-hidden`}>
         <div className={`p-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex justify-between items-center`}>
           <h3 className={`font-semibold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>{title}</h3>
           <button
@@ -34,9 +28,7 @@ function NestedTable({ data, onClose, title, isDark }: NestedTableProps) {
             <X size={20} className={isDark ? 'text-gray-400' : 'text-gray-500'} />
           </button>
         </div>
-        <div
-          className="p-4 overflow-auto max-h-[calc(80vh-4rem)] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:h-1"
-        >
+        <div className="p-4 overflow-auto max-h-[calc(80vh-4rem)]">
           <JsonTable data={data} isDark={isDark} />
         </div>
       </div>
@@ -49,7 +41,6 @@ function JsonTable({ data, isDark }: { data: any; isDark: boolean }) {
     data: any;
     title: string;
   } | null>(null);
-  const [expandedCell, setExpandedCell] = useState<{row: number; col: string} | null>(null);
 
   if (!data || typeof data !== 'object') return null;
 
@@ -70,7 +61,7 @@ function JsonTable({ data, isDark }: { data: any; isDark: boolean }) {
     }, {});
   };
 
-  const renderValue = (value: any, key: string, rowIndex: number): JSX.Element | string => {
+  const renderValue = (value: any, key: string): JSX.Element | string => {
     if (value === null) return 'null';
     if (value === undefined) return 'undefined';
     
@@ -80,7 +71,7 @@ function JsonTable({ data, isDark }: { data: any; isDark: boolean }) {
           onClick={() => setNestedView({ data: value, title: `Array: ${key}` })}
           className={`${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'} hover:underline`}
         >
-          [...]
+          [Array of Objects]
         </button>
       );
     }
@@ -100,18 +91,7 @@ function JsonTable({ data, isDark }: { data: any; isDark: boolean }) {
       );
     }
     
-    const stringValue = String(value);
-    const isExpanded = expandedCell?.row === rowIndex && expandedCell?.col === key;
-    
-    return (
-      <div 
-        className={`cursor-pointer ${isExpanded ? 'whitespace-normal' : 'whitespace-nowrap overflow-hidden text-ellipsis'}`}
-        onClick={() => setExpandedCell(isExpanded ? null : { row: rowIndex, col: key })}
-        title={stringValue}
-      >
-        {stringValue}
-      </div>
-    );
+    return String(value);
   };
 
   const rows = Array.isArray(data) ? data : [data];
@@ -122,7 +102,7 @@ function JsonTable({ data, isDark }: { data: any; isDark: boolean }) {
 
   return (
     <>
-      <div className="overflow-x-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:h-1">
+      <div className="overflow-x-auto">
         <table className={`min-w-full divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
           <thead>
             <tr>
@@ -146,15 +126,11 @@ function JsonTable({ data, isDark }: { data: any; isDark: boolean }) {
                 {columns.map((column) => (
                   <td 
                     key={column}
-                    className={`px-6 py-2 ${
-                      expandedCell?.row === i && expandedCell?.col === column 
-                        ? 'min-w-[500px] w-auto' 
-                        : 'max-w-[300px]'
-                    } text-sm font-mono ${
+                    className={`px-6 py-2 whitespace-nowrap text-sm font-mono ${
                       isDark ? 'text-gray-300' : 'text-gray-500'
                     }`}
                   >
-                    {renderValue(row[column], column, i)}
+                    {renderValue(row[column], column)}
                   </td>
                 ))}
               </tr>
@@ -176,21 +152,44 @@ function JsonTable({ data, isDark }: { data: any; isDark: boolean }) {
 }
 
 function TreeView({ data, isDark }: { data: any; isDark: boolean }) {
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const initialExpanded = new Set<string>();
+    const addPaths = (obj: any, path = '') => {
+      if (obj && typeof obj === 'object') {
+        Object.keys(obj).forEach(key => {
+          const currentPath = path ? `${path}.${key}` : key;
+          initialExpanded.add(currentPath);
+          if (obj[key] && typeof obj[key] === 'object') {
+            addPaths(obj[key], currentPath);
+          }
+        });
+      }
+    };
+    addPaths(data);
+    return initialExpanded;
+  });
+
+  const toggleExpand = (path: string) => {
+    const newExpanded = new Set(expanded);
+    if (expanded.has(path)) {
+      newExpanded.delete(path);
+    } else {
+      newExpanded.add(path);
+    }
+    setExpanded(newExpanded);
+  };
+
   const getValueColor = (value: any): string => {
-    if (value === null) return isDark ? 'text-gray-500' : 'text-gray-500';
-    if (typeof value === 'number') return isDark ? 'text-yellow-400' : 'text-yellow-600';
-    if (typeof value === 'boolean') return isDark ? 'text-purple-400' : 'text-purple-600';
-    if (typeof value === 'string') return isDark ? 'text-green-400' : 'text-green-600';
-    return isDark ? 'text-blue-400' : 'text-blue-600';
+    if (value === null) return isDark ? 'text-gray-400' : 'text-gray-500';
+    if (typeof value === 'number') return isDark ? 'text-yellow-300' : 'text-yellow-600';
+    if (typeof value === 'boolean') return isDark ? 'text-purple-300' : 'text-purple-600';
+    if (typeof value === 'string') return isDark ? 'text-green-300' : 'text-green-600';
+    return isDark ? 'text-blue-300' : 'text-blue-600';
   };
 
   const renderTree = (obj: any, path = ''): JSX.Element => {
     if (typeof obj !== 'object' || obj === null) {
-      return (
-        <div className="flex items-center">
-          <span className={getValueColor(obj)}>{JSON.stringify(obj)}</span>
-        </div>
-      );
+      return <span className={getValueColor(obj)}>{JSON.stringify(obj)}</span>;
     }
 
     const isArray = Array.isArray(obj);
@@ -199,18 +198,24 @@ function TreeView({ data, isDark }: { data: any; isDark: boolean }) {
       Object.entries(obj);
 
     return (
-      <div className="pl-4 border-l border-gray-600">
+      <div className={`pl-4 border-l ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
         {entries.map(([key, value]) => {
           const currentPath = path ? `${path}.${key}` : key;
           const isExpandable = typeof value === 'object' && value !== null;
+          const isExpanded = expanded.has(currentPath);
 
           return (
             <div key={currentPath} className="leading-none">
-              <div className="flex items-center gap-1 py-0.5">
+              <div 
+                className="flex items-center gap-1 cursor-pointer py-0.5"
+                onClick={() => isExpandable && toggleExpand(currentPath)}
+              >
                 {isExpandable && (
-                  <span className={isDark ? 'text-gray-400' : 'text-gray-400'}>▼</span>
+                  <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>
+                    {isExpanded ? '▼' : '▶'}
+                  </span>
                 )}
-                <span className={isDark ? 'text-gray-200 font-semibold' : 'text-gray-700 font-semibold'}>
+                <span className={isDark ? 'text-gray-300 font-semibold' : 'text-gray-700 font-semibold'}>
                   {key}:
                 </span>
                 {!isExpandable && (
@@ -219,7 +224,7 @@ function TreeView({ data, isDark }: { data: any; isDark: boolean }) {
                   </span>
                 )}
               </div>
-              {isExpandable && (
+              {isExpandable && isExpanded && (
                 <div className="ml-4">
                   {renderTree(value, currentPath)}
                 </div>
@@ -232,138 +237,40 @@ function TreeView({ data, isDark }: { data: any; isDark: boolean }) {
   };
 
   return (
-    <div className={`font-mono text-sm ${isDark ? 'bg-gray-800' : 'bg-gray-50'} p-4 rounded overflow-x-auto`}>
+    <div className={`font-mono text-sm ${isDark ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded overflow-x-auto`}>
       {renderTree(data)}
     </div>
   );
 }
 
-// Revert formatJson to its original implementation
-const formatJson = (data: any, isDark: boolean): { html: string; lineCount: number } => {
-  if (!data) return { html: '', lineCount: 0 };
-  
-  const jsonString = JSON.stringify(data, null, 2)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
-      let cls = 'text-gray-500';
-      if (/^"/.test(match)) {
-        if (/:$/.test(match)) {
-          cls = isDark ? 'text-blue-400' : 'text-blue-600';
-        } else {
-          cls = isDark ? 'text-green-400' : 'text-green-600';
-        }
-      } else if (/true|false/.test(match)) {
-        cls = isDark ? 'text-purple-400' : 'text-purple-600';
-      } else if (/null/.test(match)) {
-        cls = isDark ? 'text-gray-500' : 'text-gray-500';
-      } else if (!isNaN(Number(match))) {
-        cls = isDark ? 'text-yellow-400' : 'text-yellow-600';
+function formatJson(data: any, isDark: boolean): string {
+  const lines = JSON.stringify(data, null, 2).split('\n');
+  return lines.map(line => {
+    const match = line.match(/^(\s*)"(.+)":\s(.+)$/);
+    if (match) {
+      const [, indent, key, value] = match;
+      const keyColor = isDark ? '\x1b[36m' : '\x1b[34m';
+      
+      // Determine value type and color without JSON.parse
+      let coloredValue = value;
+      if (value === 'null') {
+        coloredValue = `${isDark ? '\x1b[90m' : '\x1b[90m'}${value}\x1b[0m`;
+      } else if (value === 'true' || value === 'false') {
+        coloredValue = `${isDark ? '\x1b[35m' : '\x1b[35m'}${value}\x1b[0m`;
+      } else if (value.match(/^-?\d+(\.\d+)?$/)) {
+        coloredValue = `${isDark ? '\x1b[33m' : '\x1b[33m'}${value}\x1b[0m`;
+      } else if (value.startsWith('"') && value.endsWith('"')) {
+        coloredValue = `${isDark ? '\x1b[32m' : '\x1b[32m'}${value}\x1b[0m`;
       }
-      return `<span class="${cls}">${match}</span>`;
-    });
-
-  const lines = jsonString.split('\n');
-  const lineCount = lines.length;
-  const html = lines.map(line => `<div>${line}</div>`).join('');
-
-  return { html, lineCount };
-};
-
-function HtmlView({ content, isDark }: { content: string; isDark: boolean }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  useEffect(() => {
-    if (iframeRef.current) {
-      const iframe = iframeRef.current;
-      const doc = iframe.contentDocument;
-      if (doc) {
-        doc.open();
-        
-        // Add theme-specific styles
-        const themeStyles = `
-          <style>
-            body {
-              background-color: ${isDark ? '#1f2937' : '#ffffff'};
-              color: ${isDark ? '#e5e7eb' : '#111827'};
-              font-family: system-ui, -apple-system, sans-serif;
-              margin: 0;
-              padding: 1rem;
-            }
-            a {
-              color: ${isDark ? '#60a5fa' : '#2563eb'};
-            }
-            a:visited {
-              color: ${isDark ? '#a78bfa' : '#7c3aed'};
-            }
-            h1, h2, h3, h4, h5, h6 {
-              color: ${isDark ? '#f3f4f6' : '#1f2937'};
-            }
-            code, pre {
-              background-color: ${isDark ? '#374151' : '#f3f4f6'};
-              color: ${isDark ? '#e5e7eb' : '#111827'};
-              padding: 0.25rem 0.5rem;
-              border-radius: 0.25rem;
-            }
-            pre {
-              padding: 1rem;
-              overflow-x: auto;
-            }
-            table {
-              border-collapse: collapse;
-              width: 100%;
-            }
-            th, td {
-              border: 1px solid ${isDark ? '#4b5563' : '#d1d5db'};
-              padding: 0.5rem;
-            }
-            th {
-              background-color: ${isDark ? '#374151' : '#f3f4f6'};
-            }
-            tr:nth-child(even) {
-              background-color: ${isDark ? '#374151' : '#f9fafb'};
-            }
-            blockquote {
-              border-left: 4px solid ${isDark ? '#4b5563' : '#d1d5db'};
-              margin: 0;
-              padding-left: 1rem;
-              color: ${isDark ? '#9ca3af' : '#6b7280'};
-            }
-          </style>
-        `;
-        
-        // Add the content with theme styles
-        doc.write(themeStyles + content);
-        doc.close();
-      }
+      
+      return `${indent}${keyColor}"${key}"\x1b[0m: ${coloredValue}`;
     }
-  }, [content, isDark]);
-
-  return (
-    <div className={`w-full h-[600px] ${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg overflow-hidden`}>
-      <iframe
-        ref={iframeRef}
-        className="w-full h-full border-0"
-        sandbox="allow-same-origin allow-scripts"
-        title="HTML Response"
-      />
-    </div>
-  );
+    return line;
+  }).join('\n');
 }
 
 export function ResponseViewer({ response, isDark }: ResponseViewerProps) {
-  const [view, setView] = useState<'tree' | 'table' | 'raw' | 'html'>('tree');
-  const isHtml = response?.headers['content-type']?.includes('text/html');
-
-  // Remove memoization of formatted JSON
-  const formattedJson = response?.data ? formatJson(response.data, isDark) : { html: '', lineCount: 0 };
-
-  useEffect(() => {
-    if (isHtml) {
-      setView('html');
-    }
-  }, [isHtml]);
+  const [view, setView] = useState<'tree' | 'table' | 'raw'>('tree');
 
   const handleExport = () => {
     if (!response?.data) return;
@@ -393,33 +300,21 @@ export function ResponseViewer({ response, isDark }: ResponseViewerProps) {
   return (
     <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
       <div className="mb-4 flex items-center justify-between">
-        <div className="flex-1">
-          <h3 className={`font-semibold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>Response Headers</h3>
-          <div className="p-2">
-            <div className="text-sm leading-none mb-1">
-              <span className={`font-semibold ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>Status:</span>{' '}
-              <span className={`${
-                response.status < 300 ? 'text-green-600' :
-                response.status < 400 ? 'text-blue-600' :
-                'text-red-600'
-              }`}>{response.status}</span>
-            </div>
-            {Object.entries(response.headers).map(([key, value]) => (
-              <div key={key} className="text-sm leading-none mb-1">
-                <span className={`font-semibold ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>{key}:</span>{' '}
-                <span className={isDark ? 'text-gray-400' : 'text-gray-700'}>{value}</span>
-              </div>
-            ))}
-          </div>
+        <div className="flex items-center gap-2">
+          <span className={`px-3 py-1 rounded ${
+            response.status < 300 ? 'bg-green-100 text-green-800' :
+            response.status < 400 ? 'bg-blue-100 text-blue-800' :
+            'bg-red-100 text-red-800'
+          }`}>
+            Status: {response.status}
+          </span>
         </div>
-        <div className={`flex gap-2 ml-4 p-2 rounded ${isDark ? 'bg-gray-700' : 'bg-gray-50'}`}>
-          {!isHtml && (
-            <>
+        <div className="flex gap-2">
           <button
             onClick={() => setView('tree')}
-                className={`p-1.5 rounded ${
+            className={`p-2 rounded ${
               isDark
-                    ? view === 'tree' ? 'bg-gray-600' : 'hover:bg-gray-600'
+                ? view === 'tree' ? 'bg-gray-700' : 'hover:bg-gray-700'
                 : view === 'tree' ? 'bg-gray-200' : 'hover:bg-gray-100'
             }`}
             title="Tree View"
@@ -428,41 +323,47 @@ export function ResponseViewer({ response, isDark }: ResponseViewerProps) {
           </button>
           <button
             onClick={() => setView('table')}
-                className={`p-1.5 rounded ${
+            className={`p-2 rounded ${
               isDark
-                    ? view === 'table' ? 'bg-gray-600' : 'hover:bg-gray-600'
+                ? view === 'table' ? 'bg-gray-700' : 'hover:bg-gray-700'
                 : view === 'table' ? 'bg-gray-200' : 'hover:bg-gray-100'
             }`}
             title="Table View"
           >
             <Table size={18} className={isDark ? 'text-gray-300' : 'text-gray-600'} />
           </button>
-            </>
-          )}
           <button
-            onClick={() => setView(isHtml ? 'html' : 'raw')}
-            className={`p-1.5 rounded ${
+            onClick={() => setView('raw')}
+            className={`p-2 rounded ${
               isDark
-                ? (isHtml ? view === 'html' : view === 'raw') ? 'bg-gray-600' : 'hover:bg-gray-600'
-                : (isHtml ? view === 'html' : view === 'raw') ? 'bg-gray-200' : 'hover:bg-gray-100'
+                ? view === 'raw' ? 'bg-gray-700' : 'hover:bg-gray-700'
+                : view === 'raw' ? 'bg-gray-200' : 'hover:bg-gray-100'
             }`}
-            title={isHtml ? "HTML View" : "Raw View"}
+            title="Raw View"
           >
-            {isHtml ? (
-              <Code size={18} className={isDark ? 'text-gray-300' : 'text-gray-600'} />
-            ) : (
             <AlignLeft size={18} className={isDark ? 'text-gray-300' : 'text-gray-600'} />
-            )}
           </button>
           <button
             onClick={handleExport}
-            className={`p-1.5 rounded ${
-              isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
+            className={`p-2 rounded ${
+              isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
             }`}
             title="Export Data"
           >
             <Download size={18} className={isDark ? 'text-gray-300' : 'text-gray-600'} />
           </button>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <h3 className={`font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>Response Headers</h3>
+        <div className={`${isDark ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded`}>
+          {Object.entries(response.headers).map(([key, value]) => (
+            <div key={key} className="text-sm leading-none mb-1">
+              <span className={`font-semibold ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>{key}:</span>{' '}
+              <span className={isDark ? 'text-gray-400' : 'text-gray-700'}>{value}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -476,21 +377,11 @@ export function ResponseViewer({ response, isDark }: ResponseViewerProps) {
           {view === 'tree' && <TreeView data={response.data} isDark={isDark} />}
           {view === 'table' && <JsonTable data={response.data} isDark={isDark} />}
           {view === 'raw' && (
-            <div className={`${isDark ? 'bg-gray-800 text-gray-200' : 'bg-gray-50 text-gray-900'} p-4 rounded overflow-x-auto leading-relaxed font-mono text-xs`}>
-              <div className="flex">
-                <div className="pr-4 select-none">
-                  {Array.from({ length: formattedJson.lineCount }, (_, i) => (
-                    <div key={i} className="text-gray-500">{i + 1}</div>
-                  ))}
-                </div>
-                <div className="whitespace-pre">
-                  <code dangerouslySetInnerHTML={{ __html: formattedJson.html }} />
-                </div>
-              </div>
-            </div>
-          )}
-          {view === 'html' && typeof response.data === 'string' && (
-            <HtmlView content={response.data} isDark={isDark} />
+            <pre className={`${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-50 text-gray-900'} p-4 rounded overflow-x-auto leading-none`}>
+              <code style={{ whiteSpace: 'pre' }}>
+                {formatJson(response.data, isDark)}
+              </code>
+            </pre>
           )}
         </div>
       )}

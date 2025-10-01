@@ -7,8 +7,7 @@ import { Terminal, Sun, Moon } from 'lucide-react';
 function App() {
   const [response, setResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isDark, setIsDark] = useState(true);
-  const [urlHistory, setUrlHistory] = useState<string[]>([]);
+  const [isDark, setIsDark] = useState(false);
 
   React.useEffect(() => {
     if (isDark) {
@@ -44,12 +43,6 @@ function App() {
         status: response.status,
         headers: responseHeaders,
         data,
-      });
-
-      // Add URL to history if it's not already there
-      setUrlHistory(prev => {
-        const newHistory = [config.url, ...prev.filter(url => url !== config.url)];
-        return newHistory.slice(0, 10); // Keep only the last 10 URLs
       });
     } catch (error) {
       setResponse({
@@ -91,7 +84,7 @@ function App() {
       </header>
 
       <main className="max-w-[1920px] mx-auto px-4 py-6 sm:px-6 lg:px-8 space-y-6">
-        <RequestPanel onRequest={handleRequest} isDark={isDark} urlHistory={urlHistory} />
+        <RequestPanel onRequest={handleRequest} isDark={isDark} />
         {loading ? (
           <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 flex items-center justify-center`}>
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

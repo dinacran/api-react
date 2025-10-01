@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
-import { Send, Plus, Trash2, History } from 'lucide-react';
-import { RequestConfig, AuthConfig } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { Send, Plus, Trash2, Clock, Shield } from 'lucide-react';
+import { RequestConfig, AuthConfig, UrlHistory } from '../types';
 
 interface RequestPanelProps {
   onRequest: (config: RequestConfig) => Promise<void>;
   isDark: boolean;
-  urlHistory: string[];
 }
 
 interface CustomHeader {
@@ -13,7 +12,9 @@ interface CustomHeader {
   value: string;
 }
 
-export function RequestPanel({ onRequest, isDark, urlHistory }: RequestPanelProps) {
+const MAX_HISTORY_ITEMS = 10;
+
+export function RequestPanel({ onRequest, isDark }: RequestPanelProps) {
   const [url, setUrl] = useState('');
   const [method, setMethod] = useState<RequestConfig['method']>('GET');
   const [customHeaders, setCustomHeaders] = useState<CustomHeader[]>([]);
@@ -21,6 +22,27 @@ export function RequestPanel({ onRequest, isDark, urlHistory }: RequestPanelProp
   const [body, setBody] = useState('');
   const [auth, setAuth] = useState<AuthConfig>({ type: 'None' });
   const [showHistory, setShowHistory] = useState(false);
+  const [useCorsProxy, setUseCorsProxy] = useState(false);
+  const [urlHistory, setUrlHistory] = useState<UrlHistory[]>(() => {
+    const saved = localStorage.getItem('urlHistory');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const historyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem('urlHistory', JSON.stringify(urlHistory));
+  }, [urlHistory]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (historyRef.current && !historyRef.current.contains(event.target as Node)) {
+        setShowHistory(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleAddHeader = () => {
     setCustomHeaders([...customHeaders, { key: '', value: '' }]);
@@ -36,8 +58,25 @@ export function RequestPanel({ onRequest, isDark, urlHistory }: RequestPanelProp
     setCustomHeaders(newHeaders);
   };
 
+  const handleUrlSelect = (selectedUrl: string) => {
+    setUrl(selectedUrl);
+    setShowHistory(false);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Use CORS proxy if enabled
+    const finalUrl = useCorsProxy ? `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` : url;
+
+    // Add URL to history
+    if (url) {
+      const newHistory = [
+        { url, timestamp: Date.now() },
+        ...urlHistory.filter(item => item.url !== url)
+      ].slice(0, MAX_HISTORY_ITEMS);
+      setUrlHistory(newHistory);
+    }
 
     const headers: Record<string, string> = {
       ...customHeaders.reduce((acc, { key, value }) => {
@@ -57,7 +96,7 @@ export function RequestPanel({ onRequest, isDark, urlHistory }: RequestPanelProp
     };
 
     const config: RequestConfig = {
-      url,
+      url: finalUrl,
       method,
       headers,
       body: method !== 'GET' ? body : undefined
@@ -85,52 +124,55 @@ export function RequestPanel({ onRequest, isDark, urlHistory }: RequestPanelProp
               ))}
             </select>
             <div className="relative flex-1">
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="Enter request URL"
-                className={`w-full rounded px-3 py-2 border ${
-                  isDark
-                    ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
-                    : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
-                }`}
-                required
-              />
-              {urlHistory.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowHistory(!showHistory)}
-                  className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded ${
-                    isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
+              <div className="relative flex">
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  onFocus={() => setShowHistory(true)}
+                  placeholder="Enter request URL"
+                  className={`w-full rounded px-3 py-2 border ${
+                    isDark
+                      ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                      : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
+                  }`}
+                  required
+                />
+                {urlHistory.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowHistory(!showHistory)}
+                    className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full ${
+                      isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <Clock size={16} className={isDark ? 'text-gray-400' : 'text-gray-500'} />
+                  </button>
+                )}
+              </div>
+              {showHistory && urlHistory.length > 0 && (
+                <div
+                  ref={historyRef}
+                  className={`absolute z-10 w-full mt-1 rounded-md shadow-lg ${
+                    isDark ? 'bg-gray-700' : 'bg-white'
+                  } border ${
+                    isDark ? 'border-gray-600' : 'border-gray-200'
                   }`}
                 >
-                  <History size={18} className={isDark ? 'text-gray-400' : 'text-gray-500'} />
-                </button>
-              )}
-              {showHistory && (
-                <div className={`absolute z-10 w-full mt-1 rounded-md shadow-lg ${
-                  isDark ? 'bg-gray-700' : 'bg-white'
-                } border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
-                  <div className="py-1 max-h-60 overflow-auto">
-                    {urlHistory.map((historyUrl, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => {
-                          setUrl(historyUrl);
-                          setShowHistory(false);
-                        }}
-                        className={`w-full text-left px-4 py-2 text-sm ${
-                          isDark
-                            ? 'text-gray-200 hover:bg-gray-600'
-                            : 'text-gray-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        {historyUrl}
-                      </button>
-                    ))}
-                  </div>
+                  {urlHistory.map((item, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => handleUrlSelect(item.url)}
+                      className={`w-full text-left px-4 py-2 text-sm ${
+                        isDark
+                          ? 'text-gray-200 hover:bg-gray-600'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      } ${index !== 0 ? 'border-t border-gray-200' : ''}`}
+                    >
+                      {item.url}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -147,6 +189,23 @@ export function RequestPanel({ onRequest, isDark, urlHistory }: RequestPanelProp
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={() => setUseCorsProxy(!useCorsProxy)}
+              className={`px-3 py-2 rounded border flex items-center gap-2 ${
+                useCorsProxy
+                  ? isDark
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-blue-600 text-white border-blue-600'
+                  : isDark
+                    ? 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'
+                    : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+              }`}
+              title={useCorsProxy ? 'CORS proxy enabled' : 'Enable CORS proxy'}
+            >
+              <Shield size={16} />
+              {useCorsProxy ? 'Proxy ON' : 'Proxy OFF'}
+            </button>
             <button
               type="submit"
               className={`rounded px-6 py-2 flex items-center justify-center gap-2 ${
@@ -207,9 +266,60 @@ export function RequestPanel({ onRequest, isDark, urlHistory }: RequestPanelProp
           )}
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Headers</h3>
+        {customHeaders.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Headers</h3>
+              <button
+                type="button"
+                onClick={handleAddHeader}
+                className={`${
+                  isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
+                } flex items-center gap-1`}
+              >
+                <Plus size={16} /> Add Header
+              </button>
+            </div>
+            <div className="space-y-2">
+              {customHeaders.map((header, index) => (
+                <div key={index} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={header.key}
+                    onChange={(e) => handleHeaderChange(index, 'key', e.target.value)}
+                    placeholder="Header name"
+                    className={`flex-1 rounded px-3 py-2 border ${
+                      isDark
+                        ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                        : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
+                    }`}
+                  />
+                  <input
+                    type="text"
+                    value={header.value}
+                    onChange={(e) => handleHeaderChange(index, 'value', e.target.value)}
+                    placeholder="Header value"
+                    className={`flex-1 rounded px-3 py-2 border ${
+                      isDark
+                        ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                        : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveHeader(index)}
+                    className="text-red-600 hover:text-red-700 p-2"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {customHeaders.length === 0 && (
+          <div className="flex justify-center">
             <button
               type="button"
               onClick={handleAddHeader}
@@ -220,42 +330,7 @@ export function RequestPanel({ onRequest, isDark, urlHistory }: RequestPanelProp
               <Plus size={16} /> Add Header
             </button>
           </div>
-          <div className="space-y-2">
-            {customHeaders.map((header, index) => (
-              <div key={index} className="flex gap-2">
-                <input
-                  type="text"
-                  value={header.key}
-                  onChange={(e) => handleHeaderChange(index, 'key', e.target.value)}
-                  placeholder="Header name"
-                  className={`flex-1 rounded px-3 py-2 border ${
-                    isDark
-                      ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
-                      : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
-                  }`}
-                />
-                <input
-                  type="text"
-                  value={header.value}
-                  onChange={(e) => handleHeaderChange(index, 'value', e.target.value)}
-                  placeholder="Header value"
-                  className={`flex-1 rounded px-3 py-2 border ${
-                    isDark
-                      ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
-                      : 'bg-white text-gray-900 border-gray-300 placeholder-gray-500'
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveHeader(index)}
-                  className="text-red-600 hover:text-red-700 p-2"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
 
         {method !== 'GET' && (
           <div className="space-y-2">

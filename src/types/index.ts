@@ -18,3 +18,8 @@ export interface ApiResponse {
   data: any;
   error?: string;
 }
+
+export interface UrlHistory {
+  url: string;
+  timestamp: number;
+}
